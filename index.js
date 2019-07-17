@@ -25,7 +25,7 @@ function fetchAPI() {
 
             let ids = [];
             let confessions_array = [];
-            confessions.forEach(c => {
+            confessions.reverse().forEach(c => {
                 if (!oldIds.includes(c["confession_id"])) {
                     confessions_array.push(c["content"])
                     ids.push(c["confession_id"])
