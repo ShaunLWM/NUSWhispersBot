@@ -33,7 +33,7 @@ function fetchAPI() {
             });
 
             oldIds.push(...ids);
-            fs.writeFileSync(config["databaseFile"], JSON.stringify(oldIds));
+            fs.writeFileSync(config["databaseFile"], JSON.stringify(oldIds), { mode: 0775 });
             for (let i = 0; i < confessions_array.length; i++) {
                 setTimeout(function () {
                     bot.sendMessage(config["adminChatId"], confessions_array[i]);
