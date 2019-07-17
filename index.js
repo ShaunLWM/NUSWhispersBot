@@ -45,6 +45,7 @@ function fetchAPI() {
             }, 60000)
         }).catch(error => {
             console.log(`[!] Error: ${error}`);
+            process.exit(1);
         })
 }
 
