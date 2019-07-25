@@ -27,8 +27,12 @@ function fetchAPI() {
             let confessions_array = [];
             confessions.reverse().forEach(c => {
                 if (!oldIds.includes(c["confession_id"])) {
-                    confessions_array.push(c["content"])
-                    ids.push(c["confession_id"])
+                    confessions_array.push({
+                        id: c["fb_post_id"],
+                        text: c["content"]
+                    })
+                    
+                    ids.push( c["confession_id"]);
                 }
             });
 
@@ -36,7 +40,8 @@ function fetchAPI() {
             fs.writeFileSync(config["databaseFile"], JSON.stringify(oldIds), { mode: 0775 });
             for (let i = 0; i < confessions_array.length; i++) {
                 setTimeout(function () {
-                    bot.sendMessage(config["adminChatId"], confessions_array[i]);
+                    let msg = `${(confessions_array[i]["text"]).substring(0, 4061)}\nhttps://fb.com/${confessions_array[i]["id"]}`;
+                    bot.sendMessage(config["adminChatId"], msg);
                 }, 2000 * (i + 1));
             }
 
