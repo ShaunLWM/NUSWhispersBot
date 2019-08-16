@@ -86,4 +86,6 @@ function fetchAPI() {
         })
 }
 
-fetchAPI()
+setInterval(() => {
+    fetchAPI()
+}, 15 * 60000);
