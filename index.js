@@ -2,8 +2,22 @@ const TelegramBot = require("node-telegram-bot-api");
 const fetch = require("node-fetch");
 const fs = require("fs");
 
-const config = require("./config");
+const config = require("./config.json");
 const bot = new TelegramBot(config["botToken"], { polling: true });
+
+bot.onText(/\/add (.+)/, (msg, match) => {
+    const chatId = msg.chat.id;
+    const resp = parseFloat(match[1]); // the captured "whatever"
+    if (chatId !== config["adminChatId"]) return;
+    if (config["chatIds"].includes(resp)) return bot.sendMessage(chatId, "User already in list");
+    bot.sendMessage(chatId, "User added to chat. Please confirm.");
+    config["chatIds"].push(resp);
+    fs.writeFileSync("./config.json", JSON.stringify(config, null, 2));
+    setTimeout(() => {
+        bot.sendMessage(resp, "Hi there! You will receive new NUSWhispers from now on!");
+    }, 2000);
+});
+
 
 function fetchAPI() {
     bot.getMe(result => {
@@ -31,18 +45,21 @@ function fetchAPI() {
                         id: c["fb_post_id"],
                         text: c["content"]
                     })
-                    
-                    ids.push( c["confession_id"]);
+
+                    ids.push(c["confession_id"]);
                 }
             });
 
             oldIds.push(...ids);
             fs.writeFileSync(config["databaseFile"], JSON.stringify(oldIds), { mode: 0775 });
-            for (let i = 0; i < confessions_array.length; i++) {
-                setTimeout(function () {
-                    let msg = `${(confessions_array[i]["text"]).substring(0, 4061)}\nhttps://fb.com/${confessions_array[i]["id"]}`;
-                    bot.sendMessage(config["adminChatId"], msg);
-                }, 2000 * (i + 1));
+            for (let o = 0; o < config["chatIds"].length; o++) {
+                const chatId = config["chatIds"][o];
+                for (let i = 0; i < confessions_array.length; i++) {
+                    setTimeout(function () {
+                        let msg = `${(confessions_array[i]["text"]).substring(0, 4061)}\nhttps://fb.com/${confessions_array[i]["id"]}`;
+                        bot.sendMessage(chatId, msg);
+                    }, 2000 * (i + 1));
+                }
             }
 
             setTimeout(() => {

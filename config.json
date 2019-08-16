@@ -1,0 +1,7 @@
+{
+    "NusWhisperAPI": "https://www.nuswhispers.com/api/confessions/recent?count=5&timestamp=",
+    "botToken": "",
+    "adminChatId": "",
+    "chatIds": [],
+    "databaseFile": "./ids.json"
+}
