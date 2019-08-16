@@ -6,7 +6,7 @@ const config = require("./config.json");
 const bot = new TelegramBot(config["botToken"], { polling: true });
 
 bot.onText(/\/add (.+)/, (msg, match) => {
-    const chatId = msg.chat.id;
+    const chatId = parseFloat(msg.chat.id);
     const resp = parseFloat(match[1]); // the captured "whatever"
     if (chatId !== config["adminChatId"]) return;
     if (config["chatIds"].includes(resp)) return bot.sendMessage(chatId, "User already in list");
