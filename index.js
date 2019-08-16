@@ -18,6 +18,21 @@ bot.onText(/\/add (.+)/, (msg, match) => {
     }, 2000);
 });
 
+bot.onText(/\/remove (.+)/, (msg, match) => {
+    const chatId = String(msg.chat.id);
+    const resp = String(match[1]); // the captured "whatever"
+    if (chatId !== config["adminChatId"]) return;
+    if (!config["chatIds"].includes(resp)) return bot.sendMessage(chatId, "User is not in list");
+    bot.sendMessage(chatId, "User removed from chat. Please confirm.");
+    let i = config["chatIds"].findIndex(e => {
+        return e === resp;
+    });
+
+    if (i < 0) return bot.sendMessage(chatId, "User not found in arraylist");
+    config["chatIds"].splice(i, 1);
+    fs.writeFileSync("./config.json", JSON.stringify(config, null, 2));
+});
+
 
 function fetchAPI() {
     bot.getMe(result => {
