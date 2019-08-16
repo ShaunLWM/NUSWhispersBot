@@ -82,6 +82,7 @@ function fetchAPI() {
             }, 60000)
         }).catch(error => {
             console.log(`[!] Error: ${error}`);
+            bot.sendMessage(config["adminChatId"], error);
             process.exit(1);
         })
 }
