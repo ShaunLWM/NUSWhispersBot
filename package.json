@@ -1,7 +1,7 @@
 {
   "dependencies": {
     "node-fetch": "^2.6.0",
-    "node-telegram-bot-api": "^0.30.0"
+    "node-telegram-bot-api": "^0.40.0"
   },
   "name": "nuswhispersbot-telegram",
   "version": "0.0.1",

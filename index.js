@@ -16,32 +16,47 @@ function chunkSubstr2(str, size) {
     return chunks;
 }
 
-bot.onText(/\/add (.+)/, (msg, match) => {
-    const chatId = String(msg.chat.id);
-    const resp = String(match[1]); // the captured "whatever"
-    if (chatId !== config["adminChatId"]) return;
-    if (config["chatIds"].includes(resp)) return bot.sendMessage(chatId, "User already in list");
-    bot.sendMessage(chatId, "User added to chat. Please confirm.");
-    config["chatIds"].push(resp);
-    fs.writeFileSync("./config.json", JSON.stringify(config, null, 2));
-    setTimeout(() => {
-        bot.sendMessage(resp, "Hi there! You will receive new NUSWhispers from now on!");
-    }, 2000);
+bot.onText(/\/start/, (msg, match) => {
+    return addRemoveUser(msg);
 });
 
-bot.onText(/\/remove (.+)/, (msg, match) => {
-    const chatId = String(msg.chat.id);
-    const resp = String(match[1]); // the captured "whatever"
-    if (chatId !== config["adminChatId"]) return;
-    if (!config["chatIds"].includes(resp)) return bot.sendMessage(chatId, "User is not in list");
-    bot.sendMessage(chatId, "User removed from chat. Please confirm.");
-    let i = config["chatIds"].findIndex(e => {
-        return e === resp;
-    });
+bot.onText(/\/subscribe/, (msg, match) => {
+    return addRemoveUser(msg);
+});
 
-    if (i < 0) return bot.sendMessage(chatId, "User not found in arraylist");
-    config["chatIds"].splice(i, 1);
-    fs.writeFileSync("./config.json", JSON.stringify(config, null, 2));
+function addRemoveUser(msg, isRemove = false) {
+    let chatId = String(msg["from"]["id"]);
+    let username = msg["from"]["username"] || chatId;
+    if (chatId === config["adminChatId"]) {
+        console.log("Here");
+        return bot.sendMessage(config["adminChatId"], "What are you doing?");
+    }
+    if (isRemove) {
+        if (!config["chatIds"].includes(chatId)) return bot.sendMessage(chatId, "You are not subscribed. Typed /subscribe to start.");
+        bot.sendMessage(config["adminChatId"], `User  @${username} removed from chat.`);
+        let i = config["chatIds"].findIndex(e => {
+            return e === chatId;
+        });
+
+        if (i < 0) return;
+        config["chatIds"].splice(i, 1);
+        bot.sendMessage(chatId, "You will stop receiving any more whispers.");
+    } else {
+        if (config["chatIds"].includes(chatId)) return bot.sendMessage(chatId, "You are already subscribed");
+        bot.sendMessage(config["adminChatId"], `User  @${username} added to chat.`);
+        config["chatIds"].push(chatId);
+        bot.sendMessage(chatId, "Hi there! You will receive new NUSWhispers from now on!");
+    }
+
+    return fs.writeFileSync("./config.json", JSON.stringify(config, null, 2));
+}
+
+bot.onText(/\/unsubscribe/, (msg, match) => {
+    return addRemoveUser(msg, true);
+});
+
+bot.onText(/\/stop/, (msg, match) => {
+    return addRemoveUser(msg, true);
 });
 
 
