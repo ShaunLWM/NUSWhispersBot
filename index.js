@@ -96,8 +96,9 @@ function fetchAPI() {
             fs.writeFileSync(config["databaseFile"], JSON.stringify(oldIds), { mode: 0775 });
             config["chatIds"].push(config["adminChatId"]);
             bot.sendMessage(config["adminChatId"], `${confessions_array.length} confessions to send to ${config["chatIds"].length} users.`);
+            bot.sendMessage(config["adminChatId"], JSON.stringify(config["chatIds"], null, 2));
             _.eachLimit(confessions_array, 1, (conf, cb) => {
-                let msg = `${(conf["text"])}\nhttps://fb.com/${confessions_array[i]["id"]}`;
+                let msg = `${(conf["text"])}\nhttps://fb.com/${conf["id"]}`;
                 let msges = chunkSubstr2(msg, 4050);
                 _.eachLimit(config["chatIds"], 1, (chatId, ccb) => {
                     if (msges.length > 1) {
@@ -118,7 +119,6 @@ function fetchAPI() {
             }, function (error) {
                 if (error) bot.sendMessage(config["adminChatId"], error);
                 bot.sendMessage(config["adminChatId"], "Done sending to all");
-                return process.exit(0);
             });
         }).catch(error => {
             console.log(`[!] Error: ${error}`);
@@ -128,5 +128,6 @@ function fetchAPI() {
 
 bot.sendMessage(config["adminChatId"], "Bot is up and running.");
 setInterval(() => {
+    bot.sendMessage(config["adminChatId"], "Fetching new confessions..");
     return fetchAPI()
 }, 15 * 60000);
