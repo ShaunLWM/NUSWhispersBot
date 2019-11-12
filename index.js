@@ -17,11 +17,7 @@ function chunkSubstr2(str, size) {
     return chunks;
 }
 
-bot.onText(/\/start/, (msg, match) => {
-    return addRemoveUser(msg);
-});
-
-bot.onText(/\/subscribe/, (msg, match) => {
+bot.onText(/\/(start|subscribe)/, (msg, match) => {
     return addRemoveUser(msg);
 });
 
@@ -52,14 +48,9 @@ function addRemoveUser(msg, isRemove = false) {
     return fs.writeFileSync("./config.json", JSON.stringify(config, null, 2));
 }
 
-bot.onText(/\/unsubscribe/, (msg, match) => {
+bot.onText(/\/(unsubscribe|stop)/, (msg, match) => {
     return addRemoveUser(msg, true);
 });
-
-bot.onText(/\/stop/, (msg, match) => {
-    return addRemoveUser(msg, true);
-});
-
 
 function fetchAPI() {
     bot.getMe(result => {
