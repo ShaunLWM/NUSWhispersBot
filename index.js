@@ -4,6 +4,9 @@ const fs = require("fs");
 const _ = require("async");
 
 const config = require("./config.json");
+config["chatIds"].push(config["adminChatId"]);
+config["chatIds"] = new Set(config["chatIds"]);
+
 const bot = new TelegramBot(config["botToken"], { polling: true });
 
 function chunkSubstr2(str, size) {
@@ -24,10 +27,7 @@ bot.onText(/\/(start|subscribe)/, (msg, match) => {
 function addRemoveUser(msg, isRemove = false) {
     let chatId = String(msg["from"]["id"]);
     let username = msg["from"]["username"] || chatId;
-    if (chatId === config["adminChatId"]) {
-        console.log("Here");
-        return bot.sendMessage(config["adminChatId"], "What are you doing?");
-    }
+    if (chatId === config["adminChatId"]) return bot.sendMessage(config["adminChatId"], "What are you doing?");
     if (isRemove) {
         if (!config["chatIds"].includes(chatId)) return bot.sendMessage(chatId, "You are not subscribed. Typed /subscribe to start.");
         bot.sendMessage(config["adminChatId"], `User  @${username} removed from chat.`);
@@ -86,7 +86,6 @@ function fetchAPI() {
             oldIds.push(...ids);
             fs.writeFileSync(config["databaseFile"], JSON.stringify(oldIds), { mode: 0775 });
             if (confessions_array.length < 1) return;
-            config["chatIds"].push(config["adminChatId"]);
             bot.sendMessage(config["adminChatId"], `${confessions_array.length} confessions to send to ${config["chatIds"].length} users.`);
             bot.sendMessage(config["adminChatId"], JSON.stringify(config["chatIds"], null, 2));
             _.eachLimit(confessions_array, 1, (conf, cb) => {
@@ -120,6 +119,5 @@ function fetchAPI() {
 
 bot.sendMessage(config["adminChatId"], "Bot is up and running.");
 setInterval(() => {
-    bot.sendMessage(config["adminChatId"], "Fetching new confessions..");
     return fetchAPI()
 }, 15 * 60000);
