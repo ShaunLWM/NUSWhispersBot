@@ -93,9 +93,9 @@ function fetchAPI() {
 
             oldIds.push(...ids);
             fs.writeFileSync(config["databaseFile"], JSON.stringify(oldIds), { mode: 0775 });
-            let chatIds = config["chatIds"].push(config["adminChatId"]);
-            for (let o = 0; o < chatIds.length; o++) {
-                const chatId = chatIds[o];
+            config["chatIds"].push(config["adminChatId"]);
+            for (let o = 0; o < config["chatIds"].length; o++) {
+                const chatId = config["chatIds"][o];
                 for (let i = 0; i < confessions_array.length; i++) {
                     setTimeout(function () {
                         let msg = `${(confessions_array[i]["text"])}\nhttps://fb.com/${confessions_array[i]["id"]}`;
@@ -121,6 +121,8 @@ function fetchAPI() {
         })
 }
 
+fetchAPI();
+
 setInterval(() => {
-    fetchAPI()
+    return fetchAPI()
 }, 15 * 60000);
