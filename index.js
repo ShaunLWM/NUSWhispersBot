@@ -1,6 +1,7 @@
 const TelegramBot = require("node-telegram-bot-api");
 const fetch = require("node-fetch");
 const fs = require("fs");
+const _ = require("async");
 
 const config = require("./config.json");
 const bot = new TelegramBot(config["botToken"], { polling: true });
@@ -94,35 +95,38 @@ function fetchAPI() {
             oldIds.push(...ids);
             fs.writeFileSync(config["databaseFile"], JSON.stringify(oldIds), { mode: 0775 });
             config["chatIds"].push(config["adminChatId"]);
-            for (let o = 0; o < config["chatIds"].length; o++) {
-                const chatId = config["chatIds"][o];
-                for (let i = 0; i < confessions_array.length; i++) {
-                    setTimeout(function () {
-                        let msg = `${(confessions_array[i]["text"])}\nhttps://fb.com/${confessions_array[i]["id"]}`;
-                        let msges = chunkSubstr2(msg, 4050);
-                        if (msges.length > 1) {
-                            return msges.map(m => {
-                                return bot.sendMessage(chatId, m);
-                            });
-                        }
+            bot.sendMessage(config["adminChatId"], `${confessions_array.length} confessions to send to ${config["chatIds"].length} users.`);
+            _.eachLimit(confessions_array, 1, (conf, cb) => {
+                let msg = `${(conf["text"])}\nhttps://fb.com/${confessions_array[i]["id"]}`;
+                let msges = chunkSubstr2(msg, 4050);
+                _.eachLimit(config["chatIds"], 1, (chatId, ccb) => {
+                    if (msges.length > 1) {
+                        msges.map(m => {
+                            bot.sendMessage(chatId, m);
+                        });
+                    } else {
+                        bot.sendMessage(chatId, msg);
+                    }
 
-                        return bot.sendMessage(chatId, msg);
-                    }, 2000 * (i + 1));
-                }
-            }
-
-            setTimeout(() => {
-                process.exit(0);
-            }, 60000)
+                    setTimeout(() => {
+                        return ccb();
+                    }, 1500);
+                }, function (error) {
+                    if (error) bot.sendMessage(config["adminChatId"], error);
+                    return cb();
+                });
+            }, function (error) {
+                if (error) bot.sendMessage(config["adminChatId"], error);
+                bot.sendMessage(config["adminChatId"], "Done sending to all");
+                return process.exit(0);
+            });
         }).catch(error => {
             console.log(`[!] Error: ${error}`);
-            bot.sendMessage(config["adminChatId"], error);
-            process.exit(1);
+            return bot.sendMessage(config["adminChatId"], error);
         })
 }
 
-fetchAPI();
-
+bot.sendMessage(config["adminChatId"], "Bot is up and running.");
 setInterval(() => {
     return fetchAPI()
 }, 15 * 60000);
