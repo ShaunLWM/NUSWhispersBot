@@ -94,6 +94,7 @@ function fetchAPI() {
 
             oldIds.push(...ids);
             fs.writeFileSync(config["databaseFile"], JSON.stringify(oldIds), { mode: 0775 });
+            if (confessions_array.length < 1) return;
             config["chatIds"].push(config["adminChatId"]);
             bot.sendMessage(config["adminChatId"], `${confessions_array.length} confessions to send to ${config["chatIds"].length} users.`);
             bot.sendMessage(config["adminChatId"], JSON.stringify(config["chatIds"], null, 2));
