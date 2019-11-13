@@ -68,10 +68,7 @@ function fetchAPI() {
             if (typeof confessions === "undefined" || typeof confessions === null || !Array.isArray(confessions) || confessions.length < 1) return console.log("nothing");
             let oldIds = [];
             console.log(`[@] got ${confessions.length} confessions.`);
-            if (fs.existsSync(config["databaseFile"])) {
-                oldIds = JSON.parse(fs.readFileSync(config["databaseFile"], "utf-8"));
-            }
-
+            if (fs.existsSync(config["databaseFile"])) oldIds = JSON.parse(fs.readFileSync(config["databaseFile"], "utf-8"));
             let ids = [];
             let confessions_array = [];
             confessions.reverse().forEach(c => {
@@ -79,7 +76,7 @@ function fetchAPI() {
                     confessions_array.push({
                         id: c["fb_post_id"],
                         text: c["content"]
-                    })
+                    });
 
                     ids.push(c["confession_id"]);
                 }
@@ -97,12 +94,12 @@ function fetchAPI() {
                 _.eachLimit(config["chatIds"], 1, (chatId, ccb) => {
                     if (msges.length > 1) {
                         msges.map(m => {
-                            bot.sendMessage(chatId, m);
-                            if (currentUserIndex === config["chatIds"].length - 1) bot2.sendMessage("@unofficialnuswhispers", m);
+                            bot.sendMessage(chatId, m, { "disable_web_page_preview": true });
+                            if (currentUserIndex === config["chatIds"].length - 1) bot2.sendMessage("@unofficialnuswhispers", m, { "disable_web_page_preview": true });
                         });
                     } else {
-                        bot.sendMessage(chatId, msg);
-                        if (currentUserIndex === config["chatIds"].length - 1) bot2.sendMessage("@unofficialnuswhispers", msg);
+                        bot.sendMessage(chatId, msg, { "disable_web_page_preview": true });
+                        if (currentUserIndex === config["chatIds"].length - 1) bot2.sendMessage("@unofficialnuswhispers", msg, { "disable_web_page_preview": true })
                     }
 
                     setTimeout(() => {
