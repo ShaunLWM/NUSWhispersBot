@@ -101,7 +101,7 @@ function fetchAPI() {
                         });
                     } else {
                         bot.sendMessage(chatId, msg);
-                        bot2.sendMessage("@unofficialnuswhispers", m);
+                        bot2.sendMessage("@unofficialnuswhispers", msg);
                     }
 
                     setTimeout(() => {
