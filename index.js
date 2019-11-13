@@ -93,18 +93,20 @@ function fetchAPI() {
             _.eachLimit(confessions_array, 1, (conf, cb) => {
                 let msg = `${(conf["text"])}\nhttps://fb.com/${conf["id"]}`;
                 let msges = chunkSubstr2(msg, 4050);
+                let currentUserIndex = 0;
                 _.eachLimit(config["chatIds"], 1, (chatId, ccb) => {
                     if (msges.length > 1) {
                         msges.map(m => {
                             bot.sendMessage(chatId, m);
-                            bot2.sendMessage("@unofficialnuswhispers", m);
+                            if (currentUserIndex === config["chatIds"].length - 1) bot2.sendMessage("@unofficialnuswhispers", m);
                         });
                     } else {
                         bot.sendMessage(chatId, msg);
-                        bot2.sendMessage("@unofficialnuswhispers", msg);
+                        if (currentUserIndex === config["chatIds"].length - 1) bot2.sendMessage("@unofficialnuswhispers", msg);
                     }
 
                     setTimeout(() => {
+                        currentUserIndex += 1;
                         return ccb();
                     }, 1500);
                 }, function (error) {
