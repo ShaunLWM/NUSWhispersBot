@@ -3,5 +3,6 @@
     "botToken": "",
     "adminChatId": "",
     "chatIds": [],
-    "databaseFile": "./ids.json"
+    "databaseFile": "./ids.json",
+    "botToken2": ""
 }

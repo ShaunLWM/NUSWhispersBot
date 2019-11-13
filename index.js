@@ -5,9 +5,11 @@ const _ = require("async");
 
 const config = require("./config.json");
 config["chatIds"].push(config["adminChatId"]);
-config["chatIds"] = new Set(config["chatIds"]);
+config["chatIds"] = [...new Set(config["chatIds"])];
 
 const bot = new TelegramBot(config["botToken"], { polling: true });
+
+const bot2 = new TelegramBot(config["botToken2"], { polling: true });
 
 function chunkSubstr2(str, size) {
     var numChunks = str.length / size + .5 | 0,
@@ -95,9 +97,11 @@ function fetchAPI() {
                     if (msges.length > 1) {
                         msges.map(m => {
                             bot.sendMessage(chatId, m);
+                            bot2.sendMessage("@unofficialnuswhispers", m);
                         });
                     } else {
                         bot.sendMessage(chatId, msg);
+                        bot2.sendMessage("@unofficialnuswhispers", m);
                     }
 
                     setTimeout(() => {
