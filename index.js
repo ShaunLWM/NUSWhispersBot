@@ -26,6 +26,17 @@ bot.onText(/\/(start|subscribe)/, (msg, match) => {
     return addRemoveUser(msg);
 });
 
+bot.onText(/\/broadcast (.+)/, (msg, match) => {
+    const resp = match[1];
+    _.eachLimit(config["chatIds"], 1, (chatId, ccb) => {
+        bot.sendMessage(chatId, resp, { "disable_web_page_preview": true });
+        return ccb();
+    }, function (error) {
+        if (error) bot.sendMessage(config["adminChatId"], error);
+        return bot.sendMessage(config["adminChatId"], "Broadcast completed.");
+    });
+});
+
 function addRemoveUser(msg, isRemove = false) {
     let chatId = String(msg["from"]["id"]);
     let username = msg["from"]["username"] || chatId;
