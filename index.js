@@ -12,11 +12,14 @@ config["chatIds"] = [...new Set(config["chatIds"])];
 const bot = new TelegramBot(config["botToken"], { polling: true });
 const bot2 = new TelegramBot(config["botToken2"], { polling: true });
 
-function chunkSubstr2(str, size) {
-    let numChunks = str.length / size + .5 | 0;
-    let chunks = new Array(numChunks);
-    for (let i = 0, o = 0; i < numChunks; ++i, o += size) chunks[i] = str.substr(o, size);
-    return chunks;
+function chunkSubstr(str, size) {
+    const numChunks = Math.ceil(str.length / size)
+    const chunks = new Array(numChunks)
+    for (let i = 0, o = 0; i < numChunks; ++i, o += size) {
+        chunks[i] = str.substr(o, size)
+    }
+
+    return chunks
 }
 
 async function addRemoveUser(msg, isRemove = false, cid = null) {
@@ -68,14 +71,14 @@ bot.onText(/\/broadcast (.+)/, async (msg, match) => {
     const resp = match[1];
     for (let i = 0; i < config["chatIds"].length; i++) {
         let chatId = config["chatIds"][i];
-        await sendMessage(chatId, resp, { "disable_web_page_preview": true });
+        await sendMessage(chatId, resp);
         await sleep(500);
     }
 
     return sendMessage(config["adminChatId"], "[-] Broadcast completed.");
 });
 
-async function sendMessage(chatId, message, opts = {}) {
+async function sendMessage(chatId, message, opts = { "disable_web_page_preview": true }) {
     try {
         await bot.sendMessage(chatId, message, opts);
     } catch (error) {
@@ -91,7 +94,7 @@ const sleep = ms => {
 bot.onText(/\/broadcast (.+)/, async (msg, match) => {
     const resp = match[1];
     _.eachLimit(config["chatIds"], 1, async (chatId, ccb) => {
-        await sendMessage(chatId, resp, { "disable_web_page_preview": true });
+        await sendMessage(chatId, resp);
         setTimeout(() => {
             return ccb();
         }, 500);
@@ -101,52 +104,70 @@ bot.onText(/\/broadcast (.+)/, async (msg, match) => {
     });
 });
 
+async function fetchConfessions() {
+    try {
+        let currentOffset = 0;
+        let maxOffset = 30;
+        let confessions_array = [];
+
+        let oldIds = [];
+        if (fs.existsSync(config["databaseFile"])) oldIds = JSON.parse(fs.readFileSync(config["databaseFile"], "utf-8"));
+
+        while (currentOffset <= maxOffset) {
+            let res = await fetch(`${config["NusWhisperAPI"]}${Math.floor(Date.now() / 1000)}`, {
+                headers: { "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/75.0.3770.100 Safari/537.36" }
+            });
+
+            let json = await res.json();
+            let confessions = json["data"]["confessions"];
+            if (typeof confessions === "undefined" || typeof confessions === null || !Array.isArray(confessions) || confessions.length < 1) {
+                currentOffset += 10;
+                continue
+            }
+
+            confessions.forEach(c => {
+                if (!oldIds.includes(c["confession_id"])) {
+                    confessions_array.push({
+                        id: c["fb_post_id"],
+                        text: c["content"]
+                    });
+
+                    oldIds.push(c["confession_id"]);
+                }
+            });
+
+            currentOffset += 10;
+        }
+
+        fs.writeFileSync(config["databaseFile"], JSON.stringify(oldIds), { mode: 0775 });
+        return confessions_array.reverse();
+    } catch (error) {
+        await sendMessage(config["adminChatId"], error);
+        console.error(error);
+    }
+}
+
 async function fetchAPI() {
     try {
-        let res = await fetch(`${config["NusWhisperAPI"]}${Math.floor(Date.now() / 1000)}`, {
-            headers: { "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/75.0.3770.100 Safari/537.36" }
-        });
-
-        let json = await res.json();
-        console.log(`[@] got results.`);
-        let confessions = json["data"]["confessions"];
-        if (typeof confessions === "undefined" || typeof confessions === null || !Array.isArray(confessions) || confessions.length < 1) return console.error("[@] nothing to send");
-        let oldIds = [];
-        console.log(`[@] got ${confessions.length} confessions.`);
-        if (fs.existsSync(config["databaseFile"])) oldIds = JSON.parse(fs.readFileSync(config["databaseFile"], "utf-8"));
-        let ids = [];
-        let confessions_array = [];
-        confessions.reverse().forEach(c => {
-            if (!oldIds.includes(c["confession_id"])) {
-                confessions_array.push({
-                    id: c["fb_post_id"],
-                    text: c["content"]
-                });
-
-                ids.push(c["confession_id"]);
-            }
-        });
-
-        oldIds.push(...ids);
-        fs.writeFileSync(config["databaseFile"], JSON.stringify(oldIds), { mode: 0775 });
+        let confessions_array = await fetchConfessions();
         if (confessions_array.length < 1) return console.error("[@] nothing to send");
         console.log(`${confessions_array.length} confessions to send to ${config["chatIds"].length} users.`);
         await sendMessage(config["adminChatId"], `${confessions_array.length} confessions to send to ${config["chatIds"].length} users.`);
         await sendMessage(config["adminChatId"], JSON.stringify(config["chatIds"], null, 2));
         for (let c = 0; c < confessions_array.length; c++) {
             let msg = `${confessions_array[c]["text"]}\nhttps://fb.com/${confessions_array[c]["id"]}`;
-            let msges = chunkSubstr2(msg, 4050);
+            let msges = chunkSubstr(msg, 4050);
             let currentUserIndex = 0;
             for (let u = 0; u < config["chatIds"].length; u++) {
                 let chatId = config["chatIds"][u];
                 if (msges.length > 1) {
                     for (let m = 0; m < msges.length; m++) {
                         await sleep(500);
-                        await sendMessage(chatId, msges[m], { "disable_web_page_preview": true });
+                        await sendMessage(chatId, msges[m]);
                         if (currentUserIndex === config["chatIds"].length - 1) await bot2.sendMessage("@unofficialnuswhispers", msges[m], { "disable_web_page_preview": true });
                     }
                 } else {
-                    await sendMessage(chatId, msg, { "disable_web_page_preview": true });
+                    await sendMessage(chatId, msg);
                     if (currentUserIndex === config["chatIds"].length - 1) await bot2.sendMessage("@unofficialnuswhispers", msg, { "disable_web_page_preview": true })
                 }
 
@@ -156,7 +177,6 @@ async function fetchAPI() {
 
             await sleep(500);
         }
-
     } catch (error) {
         await sendMessage(config["adminChatId"], error);
         console.error(error);

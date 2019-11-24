@@ -1,5 +1,5 @@
 {
-    "NusWhisperAPI": "https://www.nuswhispers.com/api/confessions/recent?count=5&timestamp=",
+    "NusWhisperAPI": "https://www.nuswhispers.com/api/confessions/recent?count=10&timestamp=",
     "botToken": "",
     "adminChatId": "",
     "chatIds": [],
