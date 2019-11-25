@@ -114,7 +114,7 @@ async function fetchConfessions() {
         if (fs.existsSync(config["databaseFile"])) oldIds = JSON.parse(fs.readFileSync(config["databaseFile"], "utf-8"));
 
         while (currentOffset <= maxOffset) {
-            let res = await fetch(`${config["NusWhisperAPI"]}${Math.floor(Date.now() / 1000)}`, {
+            let res = await fetch(`${config["NusWhisperAPI"]}${currentOffset}`, {
                 headers: { "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/75.0.3770.100 Safari/537.36" }
             });
 
