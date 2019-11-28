@@ -6,8 +6,8 @@ const fs = require("fs");
 const _ = require("async");
 
 const config = require("./config.json");
-config["chatIds"].push(config["adminChatId"]);
-config["chatIds"] = [...new Set(config["chatIds"])];
+let chatIds = new Set(config["chatIds"]);
+chatIds.add(config["adminChatId"]);
 
 const bot = new TelegramBot(config["botToken"], { polling: true });
 const bot2 = new TelegramBot(config["botToken2"], { polling: true });
@@ -24,34 +24,26 @@ function chunkSubstr(str, size) {
 
 async function addRemoveUser(msg, isRemove = false, cid = null) {
     if (cid !== null && isRemove) {
-        let i = config["chatIds"].findIndex(e => {
-            return e === cid;
-        });
-
-        if (i < 0) return;
-        return config["chatIds"].splice(i, 1);
+        if (chatIds.has(cid)) chatIds.delete(cid);
+        return;
     }
 
     let chatId = String(msg["from"]["id"]);
     let username = msg["from"]["username"] || chatId;
     if (chatId === config["adminChatId"]) return await sendMessage(config["adminChatId"], "What are you doing?");
     if (isRemove) {
-        if (!config["chatIds"].includes(chatId)) return await sendMessage(chatId, "You are not subscribed. Typed /subscribe to start.");
+        if (!chatIds.has(chatId)) return await sendMessage(chatId, "You are not subscribed. Typed /subscribe to start.");
         await sendMessage(config["adminChatId"], `[-] User  @${username} removed from chat.`);
-        let i = config["chatIds"].findIndex(e => {
-            return e === chatId;
-        });
-
-        if (i < 0) return;
-        config["chatIds"].splice(i, 1);
+        chatIds.delete(chatId);
         await sendMessage(chatId, "You will stop receiving any more confessions. Goodbye!");
     } else {
-        if (config["chatIds"].includes(chatId)) return await sendMessage(chatId, "You are already subscribed");
+        if (chatIds.has(chatId)) return await sendMessage(chatId, "You are already subscribed");
         await sendMessage(config["adminChatId"], `[+] User  @${username} added to chat.`);
-        config["chatIds"].push(chatId);
+        chatIds.add(chatId);
         await sendMessage(chatId, "Hi there! You will receive new NUSWhispers from now on!\n\nPlease join this channel as this bot will stop working at the end of this month.\nhttps://t.me/unofficialnuswhispers");
     }
 
+    config["chatIds"] = Array.from(chatIds);
     return fs.writeFileSync("./config.json", JSON.stringify(config, null, 2));
 }
 
@@ -69,8 +61,9 @@ bot.onText(/\/ping/, async msg => {
 
 bot.onText(/\/broadcast (.+)/, async (msg, match) => {
     const resp = match[1];
-    for (let i = 0; i < config["chatIds"].length; i++) {
-        let chatId = config["chatIds"][i];
+    let chatIdIterator = chatIds.values();
+    for (let i = 0; i < chatIds.size; i++) {
+        let chatId = chatIdIterator.next().value;
         await sendMessage(chatId, resp);
         await sleep(500);
     }
@@ -91,38 +84,24 @@ const sleep = ms => {
     return new Promise(resolve => setTimeout(resolve, ms))
 }
 
-bot.onText(/\/broadcast (.+)/, async (msg, match) => {
-    const resp = match[1];
-    _.eachLimit(config["chatIds"], 1, async (chatId, ccb) => {
-        await sendMessage(chatId, resp);
-        setTimeout(() => {
-            return ccb();
-        }, 500);
-    }, async (error) => {
-        if (error) await sendMessage(config["adminChatId"], error);
-        return await sendMessage(config["adminChatId"], "Broadcast completed.");
-    });
-});
-
 async function fetchConfessions() {
     try {
         let currentOffset = 0;
         let maxOffset = 30;
         let confessions_array = [];
-
         let oldIds = [];
-        if (fs.existsSync(config["databaseFile"])) oldIds = JSON.parse(fs.readFileSync(config["databaseFile"], "utf-8"));
 
+        if (fs.existsSync(config["databaseFile"])) oldIds = JSON.parse(fs.readFileSync(config["databaseFile"], "utf-8"));
         while (currentOffset <= maxOffset) {
             let res = await fetch(`${config["NusWhisperAPI"]}${currentOffset}`, {
-                headers: { "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/75.0.3770.100 Safari/537.36" }
+                headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/75.0.3770.100 Safari/537.36" }
             });
 
             let json = await res.json();
             let confessions = json["data"]["confessions"];
             if (typeof confessions === "undefined" || typeof confessions === null || !Array.isArray(confessions) || confessions.length < 1) {
                 currentOffset += 10;
-                continue
+                continue;
             }
 
             confessions.forEach(c => {
@@ -139,11 +118,11 @@ async function fetchConfessions() {
             currentOffset += 10;
         }
 
-        fs.writeFileSync(config["databaseFile"], JSON.stringify(oldIds), { mode: 0775 });
+        fs.writeFileSync(config["databaseFile"], JSON.stringify(oldIds), { mode: 775 });
         return confessions_array.reverse();
     } catch (error) {
         await sendMessage(config["adminChatId"], error);
-        console.error(error);
+        return console.error(error);
     }
 }
 
@@ -151,24 +130,25 @@ async function fetchAPI() {
     try {
         let confessions_array = await fetchConfessions();
         if (confessions_array.length < 1) return console.error("[@] nothing to send");
-        console.log(`${confessions_array.length} confessions to send to ${config["chatIds"].length} users.`);
-        await sendMessage(config["adminChatId"], `${confessions_array.length} confessions to send to ${config["chatIds"].length} users.`);
-        await sendMessage(config["adminChatId"], JSON.stringify(config["chatIds"], null, 2));
+        console.log(`${confessions_array.length} confessions to send to ${chatIds.size} users.`);
+        await sendMessage(config["adminChatId"], `${confessions_array.length} confessions to send to ${chatIds.size} users.`);
+        await sendMessage(config["adminChatId"], JSON.stringify(Array.from(chatIds), null, 2));
         for (let c = 0; c < confessions_array.length; c++) {
             let msg = `${confessions_array[c]["text"]}\nhttps://fb.com/${confessions_array[c]["id"]}`;
             let msges = chunkSubstr(msg, 4050);
             let currentUserIndex = 0;
-            for (let u = 0; u < config["chatIds"].length; u++) {
-                let chatId = config["chatIds"][u];
+            let chatIdIterator = chatIds.values();
+            for (let u = 0; u < chatIds.size; u++) {
+                let chatId = chatIdIterator.next().value;
                 if (msges.length > 1) {
                     for (let m = 0; m < msges.length; m++) {
                         await sleep(500);
                         await sendMessage(chatId, msges[m]);
-                        if (currentUserIndex === config["chatIds"].length - 1) await bot2.sendMessage("@unofficialnuswhispers", msges[m], { "disable_web_page_preview": true });
+                        if (currentUserIndex === chatIds.size - 1) await bot2.sendMessage("@unofficialnuswhispers", msges[m], { "disable_web_page_preview": true });
                     }
                 } else {
                     await sendMessage(chatId, msg);
-                    if (currentUserIndex === config["chatIds"].length - 1) await bot2.sendMessage("@unofficialnuswhispers", msg, { "disable_web_page_preview": true })
+                    if (currentUserIndex === chatIds.size - 1) await bot2.sendMessage("@unofficialnuswhispers", msg, { "disable_web_page_preview": true })
                 }
 
                 currentUserIndex += 1;
@@ -179,7 +159,7 @@ async function fetchAPI() {
         }
     } catch (error) {
         await sendMessage(config["adminChatId"], error);
-        console.error(error);
+        return console.error(error);
     }
 }
 
