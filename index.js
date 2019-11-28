@@ -3,7 +3,6 @@ process.env.NTBA_FIX_319 = 1;
 const TelegramBot = require("node-telegram-bot-api");
 const fetch = require("node-fetch");
 const fs = require("fs");
-const _ = require("async");
 
 const config = require("./config.json");
 let chatIds = new Set(config["chatIds"]);
@@ -99,7 +98,7 @@ async function fetchConfessions() {
 
             let json = await res.json();
             let confessions = json["data"]["confessions"];
-            if (typeof confessions === "undefined" || typeof confessions === null || !Array.isArray(confessions) || confessions.length < 1) {
+            if (typeof confessions === "undefined" || confessions === null || !Array.isArray(confessions) || confessions.length < 1) {
                 currentOffset += 10;
                 continue;
             }
