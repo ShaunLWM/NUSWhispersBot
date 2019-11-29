@@ -135,7 +135,6 @@ async function fetchAPI() {
         for (let c = 0; c < confessions_array.length; c++) {
             let msg = `${confessions_array[c]["text"]}\nhttps://fb.com/${confessions_array[c]["id"]}`;
             let msges = chunkSubstr(msg, 4050);
-            let currentUserIndex = 0;
             let chatIdIterator = chatIds.values();
             for (let u = 0; u < chatIds.size; u++) {
                 let chatId = chatIdIterator.next().value;
@@ -143,14 +142,13 @@ async function fetchAPI() {
                     for (let m = 0; m < msges.length; m++) {
                         await sleep(500);
                         await sendMessage(chatId, msges[m]);
-                        if (currentUserIndex === chatIds.size - 1) await bot2.sendMessage("@unofficialnuswhispers", msges[m], { "disable_web_page_preview": true });
+                        if (u === chatIds.size - 1) await bot2.sendMessage("@unofficialnuswhispers", msges[m], { "disable_web_page_preview": true });
                     }
                 } else {
                     await sendMessage(chatId, msg);
-                    if (currentUserIndex === chatIds.size - 1) await bot2.sendMessage("@unofficialnuswhispers", msg, { "disable_web_page_preview": true })
+                    if (u === chatIds.size - 1) await bot2.sendMessage("@unofficialnuswhispers", msg, { "disable_web_page_preview": true })
                 }
 
-                currentUserIndex += 1;
                 await sleep(800);
             }
 
