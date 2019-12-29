@@ -24,7 +24,7 @@ function generateReaction(id) {
 function createKeyboard(id) { // confession id
     let reactionIndex = reactionIds.findIndex(val => val.id === id);
     let opts = {};
-    if (reactionIndex > 0)
+    if (reactionIndex > -1)
         opts = reactionIds[reactionIndex];
     else {
         opts = generateReaction(id);
@@ -38,6 +38,8 @@ function createKeyboard(id) { // confession id
         return { text: `${e} ${opts["response"][i].length}`, callback_data: `${id}-${i}` };
     });
 
+    console.log(opts);
+    console.log(keyboard);
     return [keyboard];
 }
 

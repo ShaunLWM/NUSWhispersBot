@@ -5,22 +5,35 @@
 process.env.NTBA_FIX_319 = 1;
 
 let emojis = ["👍", "♥️", "😂", "😡", "😲", "😭"];
-let confessionLikes = new Array(emojis.length).fill(0);
+let reactionIds = JSON.parse(require("fs").readFileSync("./reactions.json"));
 
-function createKeyboard() {
-	let kb = emojis.map((e, i) => {
-		if (confessionLikes[i] === 0)
-			return { text: e, callback_data: i };
-		return { text: `${e} ${confessionLikes[i]}`, callback_data: i };
-	})
-
-	console.log(kb);
-	console.log([kb.slice(0, 3), kb.slice(3, 6)]);
-	return [kb];
+function generateReaction(id) {
+	return { id, response: new Array(emojis.length).fill([]) }
 }
 
-let currentKeyboard = createKeyboard();
-// console.log(currentKeyboard);
+function createKeyboard(id) {
+	let reactionIndex = reactionIds.findIndex(val => val.id === id);
+	console.log("TCL: createKeyboard -> reactionIndex", reactionIndex)
+	let opts = {};
+	if (reactionIndex > -1)
+		opts = reactionIds[reactionIndex];
+	else {
+		opts = generateReaction(id);
+		reactionIds.push(opts);
+	}
+
+	console.log(opts);
+
+	let keyboard = emojis.map((e, i) => {
+		if (opts["response"][i].length === 0)
+			return { text: e, callback_data: `${id}-${i}` };
+		return { text: `${e} ${opts["response"][i].length}`, callback_data: `${id}-${i}` };
+	});
+
+	console.log(keyboard);
+	return [keyboard];
+}
+
 const TOKEN = "";
 const TelegramBot = require('node-telegram-bot-api');
 const options = {
@@ -34,7 +47,7 @@ bot.onText(/\/love/, msg => {
 	const opts = {
 		// reply_to_message_id: msg.message_id,
 		reply_markup: JSON.stringify({
-			inline_keyboard: currentKeyboard
+			inline_keyboard: createKeyboard(74349)
 		})
 	};
 
@@ -71,17 +84,31 @@ bot.onText(/\/editable/, function onEditableText(msg) {
 
 // Handle callback queries
 bot.on('callback_query', msg => {
-	let text = msg["message"]["text"];
-	const data = parseInt(msg["data"]);
-	confessionLikes[data]++;
+	let text = msg["message"]["text"]; // telegram message itself
+	let userId = msg["from"]["id"];
+	let regexp = /(\d+)-(\d)/g;
+	let match = regexp.exec(msg["data"]);
+	if (match === null) return;
+	//let confessionId = match[1];
+	let confessionId = "74349";
+	let reactionArrayId = parseInt(match[2]);
+	console.log(confessionId, reactionArrayId);
+	let reactionIndex = reactionIds.findIndex(val => val.id === confessionId);
+	if (reactionIndex < 0) return bot.answerCallbackQuery(msg.id, "Wrong reaction? What?!");
+	if (reactionIds[reactionIndex]["response"][reactionArrayId].includes(userId)) return bot.answerCallbackQuery(msg.id, "You have already reacted.");
+	console.log("TCL: reactionIds[reactionIndex][\"response\"][reactionArrayId]", reactionIds[reactionIndex]["response"][reactionArrayId])
+	reactionIds[reactionIndex]["response"][reactionArrayId].push(userId);
+	console.log("TCL: reactionIds[reactionIndex][\"response\"][reactionArrayId]", reactionIds[reactionIndex]["response"][reactionArrayId])
 	const opts = {
-		chat_id: msg.message.chat.id,
-		message_id: msg.message.message_id,
+		chat_id: msg["message"]["chat"]["id"],
+		message_id: msg["message"]["message_id"],
+		disable_web_page_preview: true,
 		reply_markup: JSON.stringify({
-			inline_keyboard: createKeyboard()
+			inline_keyboard: createKeyboard(confessionId)
 		})
 	};
 
+	// fs.writeFileSync("./reactions.json", JSON.stringify(reactionIds), { mode: 775 });
 	bot.editMessageText(text, opts);
 	return bot.answerCallbackQuery(msg.id);
 });
