@@ -1,8 +1,9 @@
 {
-    "NusWhisperAPI": "https://www.nuswhispers.com/api/confessions/recent?count=10&offset=",
-    "botToken": "",
-    "adminChatId": "",
-    "chatIds": [],
-    "databaseFile": "./ids.json",
-    "botToken2": ""
+  "NusWhisperAPI": "https://www.nuswhispers.com/api/confessions/recent?count=10&offset=",
+  "botToken": "",
+  "adminChatId": "",
+  "chatIds": [],
+  "databaseFile": "./ids.json",
+  "reactionFile": "./reactions.json",
+  "botToken2": ""
 }

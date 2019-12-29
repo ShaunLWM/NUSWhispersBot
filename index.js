@@ -11,6 +11,36 @@ chatIds.add(config["adminChatId"]);
 const bot = new TelegramBot(config["botToken"], { polling: true });
 const bot2 = new TelegramBot(config["botToken2"], { polling: true });
 
+let emojis = ["👍", "♥️", "😂", "😡", "😲", "😭"];
+
+let reactionIds = [];
+if (fs.existsSync(config["reactionFile"])) reactionIds = JSON.parse(fs.readFileSync(config["reactionFile"], "utf-8"));
+console.log(`There are ${reactionIds.length} reactions in the array.`);
+
+function generateReaction(id) {
+    return { id, response: new Array(emojis.length).fill([]) }
+}
+
+function createKeyboard(id) { // confession id
+    let reactionIndex = reactionIds.findIndex(val => val.id === id);
+    let opts = {};
+    if (reactionIndex > 0)
+        opts = reactionIds[reactionIndex];
+    else {
+        opts = generateReaction(id);
+        reactionIds.push(opts);
+        fs.writeFileSync(config["reactionFile"], JSON.stringify(reactionIds), { mode: 775 });
+    }
+
+    let keyboard = emojis.map((e, i) => {
+        if (opts["response"][i].length === 0)
+            return { text: e, callback_data: `${id}-${i}` };
+        return { text: `${e} ${opts["response"][i].length}`, callback_data: `${id}-${i}` };
+    });
+
+    return [keyboard];
+}
+
 function chunkSubstr(str, size) {
     const numChunks = Math.ceil(str.length / size)
     const chunks = new Array(numChunks)
@@ -70,14 +100,59 @@ bot.onText(/\/broadcast (.+)/, async (msg, match) => {
     return sendMessage(config["adminChatId"], "[-] Broadcast completed.");
 });
 
+bot2.on("error", error => bot.sendMessage(config["adminChatId"], JSON.stringify(error, null, 2)));
+bot.on("error", error => bot.sendMessage(config["adminChatId"], JSON.stringify(error, null, 2)));
+
 async function sendMessage(chatId, message, opts = { "disable_web_page_preview": true }) {
     try {
-        await bot.sendMessage(chatId, message, opts);
+        if (typeof message === "object" && message !== null) message = message.toString();
+        if (chatId === config["adminChatId"])
+            return await bot.sendMessage(chatId, `>> ${message}`, opts);
+        return await bot.sendMessage(chatId, message, opts);
     } catch (error) {
         if (error.response && error.response.statusCode === 403) return addRemoveUser(null, true, chatId);
         return await sendMessage(config["adminChatId"], JSON.stringify(error, null, 2));
     }
 }
+
+async function sendGroupMessage(msg, id) {
+    try {
+        await bot2.sendMessage("@unofficialnuswhispers", msg, {
+            "disable_web_page_preview": true,
+            reply_markup: JSON.stringify({
+                inline_keyboard: createKeyboard(id)
+            })
+        });
+    } catch (error) {
+        return await sendMessage(config["adminChatId"], JSON.stringify(error, null, 2));
+    }
+
+}
+
+bot2.on("callback_query", msg => {
+    let text = msg["message"]["text"]; // telegram message itself
+    let userId = msg["from"]["id"];
+    let regexp = /(\d+)-(\d)/g;
+    let match = regexp.exec(msg["data"]);
+    if (match === null) return;
+    let confessionId = match[1];
+    let reactionArrayId = parseInt(match[2]);
+    let reactionIndex = reactionIds.findIndex(val => val.id === confessionId);
+    if (reactionIndex < 0) return bot2.answerCallbackQuery(msg.id, "Wrong reaction? What?!");
+    if (reactionIds[reactionIndex]["response"][reactionArrayId].includes(userId)) return bot2.answerCallbackQuery(msg.id, "You have already reacted.");
+    reactionIds[reactionIndex]["response"][reactionArrayId].push(userId);
+    const opts = {
+        chat_id: msg["message"]["chat"]["id"],
+        message_id: msg["message"]["message_id"],
+        reply_markup: JSON.stringify({
+            inline_keyboard: createKeyboard(confessionId)
+        })
+    };
+
+    fs.writeFileSync(config["reactionFile"], JSON.stringify(reactionIds), { mode: 775 });
+    bot2.editMessageText(text, opts);
+    return bot2.answerCallbackQuery(msg.id);
+});
 
 const sleep = ms => {
     return new Promise(resolve => setTimeout(resolve, ms))
@@ -107,10 +182,12 @@ async function fetchConfessions() {
                 if (!oldIds.includes(c["confession_id"])) {
                     confessions_array.push({
                         id: c["fb_post_id"],
-                        text: c["content"]
+                        text: c["content"],
+                        cid: c["confession_id"]
                     });
 
                     oldIds.push(c["confession_id"]);
+                    reactionIds.push(generateReaction(c["confession_id"]));
                 }
             });
 
@@ -118,10 +195,12 @@ async function fetchConfessions() {
         }
 
         fs.writeFileSync(config["databaseFile"], JSON.stringify(oldIds), { mode: 775 });
+        fs.writeFileSync(config["reactionFile"], JSON.stringify(reactionIds), { mode: 775 });
         return confessions_array.reverse();
     } catch (error) {
         await sendMessage(config["adminChatId"], error);
-        return console.error(error);
+        console.error(error);
+        return [];
     }
 }
 
@@ -142,11 +221,11 @@ async function fetchAPI() {
                     for (let m = 0; m < msges.length; m++) {
                         await sleep(500);
                         await sendMessage(chatId, msges[m]);
-                        if (u === chatIds.size - 1) await bot2.sendMessage("@unofficialnuswhispers", msges[m], { "disable_web_page_preview": true });
+                        if (u === chatIds.size - 1) await sendGroupMessage(msges[m], confessions_array[c]["cid"]);
                     }
                 } else {
                     await sendMessage(chatId, msg);
-                    if (u === chatIds.size - 1) await bot2.sendMessage("@unofficialnuswhispers", msg, { "disable_web_page_preview": true })
+                    if (u === chatIds.size - 1) await sendGroupMessage(msg, confessions_array[c]["cid"]);
                 }
 
                 await sleep(800);
@@ -155,7 +234,7 @@ async function fetchAPI() {
             await sleep(500);
         }
     } catch (error) {
-        await sendMessage(config["adminChatId"], error);
+        await sendMessage(config["adminChatId"], JSON.stringify(error, null, 2));
         return console.error(error);
     }
 }
@@ -166,5 +245,5 @@ async function fetchAPI() {
     setInterval(async () => {
         console.log("[-] Fetching now..");
         return await fetchAPI()
-    }, 15 * 60000);
+    }, 5 * 60000);
 })();
