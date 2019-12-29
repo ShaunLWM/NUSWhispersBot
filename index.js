@@ -38,8 +38,6 @@ function createKeyboard(id) { // confession id
         return { text: `${e} ${opts["response"][i].length}`, callback_data: `${id}-${i}` };
     });
 
-    console.log(opts);
-    console.log(keyboard);
     return [keyboard];
 }
 
