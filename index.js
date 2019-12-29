@@ -144,6 +144,7 @@ bot2.on("callback_query", msg => {
     const opts = {
         chat_id: msg["message"]["chat"]["id"],
         message_id: msg["message"]["message_id"],
+        disable_web_page_preview: true,
         reply_markup: JSON.stringify({
             inline_keyboard: createKeyboard(confessionId)
         })
