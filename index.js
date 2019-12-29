@@ -246,5 +246,5 @@ async function fetchAPI() {
     setInterval(async () => {
         console.log("[-] Fetching now..");
         return await fetchAPI()
-    }, 5 * 60000);
+    }, 15 * 60000);
 })();
