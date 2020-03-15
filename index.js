@@ -69,7 +69,7 @@ async function addRemoveUser(msg, isRemove = false, cid = null) {
         if (chatIds.has(chatId)) return await sendMessage(chatId, "You are already subscribed");
         await sendMessage(config["adminChatId"], `[+] User  @${username} added to chat.`);
         chatIds.add(chatId);
-        await sendMessage(chatId, "Hi there! You will receive new NUSWhispers from now on!\n\nPlease join this channel as this bot will stop working at the end of this month.\nhttps://t.me/unofficialnuswhispers");
+        await sendMessage(chatId, "Hi there! You will receive new NUSWhispers from now on!\n\nFeel free to /stop this bot & join this channel for more functionalities (eg. search)..\nhttps://t.me/unofficialnuswhispers");
     }
 
     config["chatIds"] = Array.from(chatIds);
@@ -106,8 +106,8 @@ bot.on("error", error => bot.sendMessage(config["adminChatId"], JSON.stringify(e
 async function sendMessage(chatId, message, opts = { "disable_web_page_preview": true }) {
     try {
         if (typeof message === "object" && message !== null) message = message.toString();
-        if (chatId === config["adminChatId"])
-            return await bot.sendMessage(chatId, `>> ${message}`, opts);
+        // if (chatId === config["adminChatId"])
+        //     return await bot.sendMessage(chatId, `>> ${message}`, opts);
         return await bot.sendMessage(chatId, message, opts);
     } catch (error) {
         if (error.response && error.response.statusCode === 403) return addRemoveUser(null, true, chatId);
@@ -211,7 +211,7 @@ async function fetchAPI() {
         if (confessions_array.length < 1) return console.error("[@] nothing to send");
         console.log(`${confessions_array.length} confessions to send to ${chatIds.size} users.`);
         await sendMessage(config["adminChatId"], `${confessions_array.length} confessions to send to ${chatIds.size} users.`);
-        await sendMessage(config["adminChatId"], JSON.stringify(Array.from(chatIds), null, 2));
+        // await sendMessage(config["adminChatId"], JSON.stringify(Array.from(chatIds), null, 2));
         for (let c = 0; c < confessions_array.length; c++) {
             let msg = `${confessions_array[c]["text"]}\nhttps://fb.com/${confessions_array[c]["id"]}`;
             let msges = chunkSubstr(msg, 4050);
